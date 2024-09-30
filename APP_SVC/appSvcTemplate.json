@@ -1,0 +1,50 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+      {
+        "type": "Microsoft.Web/sites",
+        "apiVersion": "2021-01-15",
+        "name": "[parameters('siteName')]",
+        "location": "[parameters('location')]",
+        "kind": "app",
+        "properties": {
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('hostingPlanName'))]",
+          "siteConfig": {
+            "appSettings": [
+              {
+                "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                "value": "14"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "Microsoft.Web/serverfarms",
+        "apiVersion": "2021-01-15",
+        "name": "[parameters('hostingPlanName')]",
+        "location": "[parameters('location')]",
+        "sku": {
+          "Tier": "Free",
+          "Name": "F1",
+          "Capacity": 1
+        }
+      }
+    ],
+    "parameters": {
+      "siteName": {
+        "type": "string",
+        "defaultValue": "my-node-app"
+      },
+      "hostingPlanName": {
+        "type": "string",
+        "defaultValue": "myHostingPlan"
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "Central India"
+      }
+    }
+  }
+  

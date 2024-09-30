@@ -1,0 +1,65 @@
+trigger:
+  branches:
+    include:
+      - Dev
+
+variables:
+  azureSubscription: 'nodejssvccon'
+  resourceGroup: 'Node_JS_RG'
+  siteName: 'nodejsapp'
+  hostingPlanName: 'nodejsasp'
+  location: 'Central India'
+  artifactName: 'nodejs_app'
+
+jobs:
+- job: BuildAndDeploy
+  displayName: 'Build and Deploy Node.js App'
+  pool: myWindowsAgentsPool
+  
+  steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '14.x'  # or any version you need
+    displayName: 'Install Node.js'
+
+  - script: |
+      npm install
+      npm run build  # Adjust if you have a build script
+    displayName: 'Install dependencies and build the app'
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: '$(System.DefaultWorkingDirectory)/APP_SVC/'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/$(artifactName).zip'
+      include: |
+        **/*
+    displayName: 'Archive files'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/$(artifactName).zip'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
+    displayName: 'Publish Artifacts'
+
+
+  - task: AzureResourceManagerTemplateDeployment@3
+    inputs:
+      deploymentScope: 'Resource Group'
+      azureResourceManagerConnection: '$(azureSubscription)'
+      action: 'Create Or Update Resource Group'
+      resourceGroupName: '$(resourceGroup)'
+      location: '$(location)'
+      templateLocation: 'Linked artifact'
+      csmFile: '$(System.DefaultWorkingDirectory)/APP_SVC/appSvcTemplate.json'
+      csmParametersFile: '$(System.DefaultWorkingDirectory)/APP_SVC/appSvcParameters.json'
+      deploymentMode: 'Incremental'
+
+  - task: AzureWebApp@1
+    inputs:
+      azureSubscription: '$(azureSubscription)'
+      appName: '$(appName)'
+      package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+      deploymentMethod: 'auto'
