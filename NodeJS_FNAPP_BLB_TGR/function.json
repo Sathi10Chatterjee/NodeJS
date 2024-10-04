@@ -1,0 +1,13 @@
+{
+    "scriptFile": "index.js",
+    "bindings": [
+      {
+        "name": "myBlob",
+        "type": "blobTrigger",
+        "direction": "in",
+        "path": "my-container/{name}",
+        "connection": "AzureWebJobsStorage"
+      }
+    ]
+  }
+  

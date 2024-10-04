@@ -1,0 +1,99 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  azureSubscription: 'YourAzureSubscriptionName'
+  resourceGroup: 'YourResourceGroupName'
+  functionAppName: 'YourFunctionAppName'
+  storageAccount: 'YourStorageAccountName'
+  location: 'East US'
+  buildConfiguration: 'Release'
+  artifactName: 'nodejs-artifact'
+
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: Build
+    steps:
+    - task: UseNode@2
+      inputs:
+        version: '20.x'  # Node.js version
+    - task: Npm@1
+      displayName: npm install
+      inputs:
+        command: 'install'
+        workingDir: '$(Build.SourcesDirectory)/NodeJS_FNAPP_BLB_TGR/'
+    - task: Npm@1
+      displayName: npm run build
+      inputs:
+        command: 'custom'
+        workingDir: '$(Build.SourcesDirectory)/NodeJS_FNAPP_BLB_TGR/'
+        customCommand: 'run build'
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/NodeJS_FNAPP_BLB_TGR/'  # Adjust as necessary
+        Contents: |
+          **/*
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy Files to Staging Directory'
+
+    - task: ArchiveFiles@2
+      inputs:
+        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(artifactName).zip'
+        replaceExistingArchive: true
+      displayName: 'Archive Files'
+
+- stage: Deploy
+  displayName: 'Deploy to Azure'
+  jobs:
+  - job: Deploy
+    steps:
+    - task: AzureFunctionApp@1
+      inputs:
+        azureSubscription: $(azureSubscription)
+        appType: 'functionApp'
+        appName: $(functionAppName)
+        package: '$(Build.ArtifactStagingDirectory)/**/*.zip'  # Path to the packaged function zip
+        deploymentMethod: 'zipDeploy'  # Deployment method: zipDeploy or other methods
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Ensure the function app is running after deployment
+          az functionapp restart --name $(functionAppName) --resource-group $(resourceGroup)
+        displayName: 'Restart Function App'
+
+- stage: Package
+  displayName: 'Package'
+  jobs:
+  - job: Package
+    steps:
+    - script: |
+        # Create a zip file for the function app deployment
+        mkdir -p $(Build.ArtifactStagingDirectory)
+        zip -r $(Build.ArtifactStagingDirectory)/functionapp.zip .
+      displayName: 'Package Function App'
+
+  - stage: Publish
+  displayName: 'Publish'
+  jobs:
+  - job: Publish
+    steps:
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: '$(Build.ArtifactStagingDirectory)/functionapp.zip'
+          artifact: 'NodeJsBuildArtifact'
+          publishLocation: 'pipeline'
+        displayName: 'Publish Artifact'   
