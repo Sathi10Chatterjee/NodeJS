@@ -1,0 +1,39 @@
+trigger:
+  - main
+stages:
+  - stage: Install
+    jobs:
+      - job: InstallPython
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              echo "Checking if Python is installed..."
+              if ! command -v python3 &>/dev/null; then
+                echo "Python not found, installing Python 3..."
+                sudo apt-get update
+                sudo apt-get install -y python3 python3-pip
+              else
+                echo "Python is already installed."
+              fi
+            displayName: 'Check and Install Python'
+  - stage: Build
+    jobs:
+      - job: Build
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              echo "Building the project..."
+              python3 --version  # Verify Python installation
+            displayName: 'Build Project'
+  - stage: Test
+    jobs:
+      - job: Test
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              echo "Running tests..."
+              python3 -m unittest discover
+            displayName: 'Run Tests'
