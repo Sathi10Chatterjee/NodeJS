@@ -1,37 +1,48 @@
 trigger:
   - main
+
 stages:
   - stage: Install
     jobs:
       - job: InstallPython
         pool:
-          vmImage: 'ubuntu-latest'
+          vmImage: 'rhel8'  # Using RHEL 8 as the base image
         steps:
           - script: |
               echo "Checking if Python is installed..."
               if ! command -v python3 &>/dev/null; then
                 echo "Python not found, installing Python 3..."
-                sudo apt-get update
-                sudo apt-get install -y python3 python3-pip
+                
+# Condition: For RHEL 8 or later, using dnf
+                if [[ -n "$(command -v dnf)" ]]; then
+                  sudo dnf install -y python3 python3-pip
+# For RHEL 7 or earlier, using yum
+                elif [[ -n "$(command -v yum)" ]]; then
+                  sudo yum install -y python3 python3-pip
+                else
+                  echo "Package manager not found. Manual Python installation required."
+                  exit 1
+                fi
               else
                 echo "Python is already installed."
-              fi
             displayName: 'Check and Install Python'
+
   - stage: Build
     jobs:
       - job: Build
         pool:
-          vmImage: 'ubuntu-latest'
+          vmImage: 'rhel8'  # Using RHEL 8 as the base image
         steps:
           - script: |
               echo "Building the project..."
               python3 --version  # Verify Python installation
             displayName: 'Build Project'
+
   - stage: Test
     jobs:
       - job: Test
         pool:
-          vmImage: 'ubuntu-latest'
+          vmImage: 'rhel8'  # Using RHEL 8 as the base image
         steps:
           - script: |
               echo "Running tests..."
