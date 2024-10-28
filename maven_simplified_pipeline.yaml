@@ -1,0 +1,27 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main  # Adjust as needed
+
+pool:
+  name: 'Self-Hosted'  # Specify your self-hosted agent pool
+
+stages:
+  - stage: Build
+    jobs:
+      - job: MavenInstallation
+        steps:
+          # Download and extract Maven in one step
+          - script: |
+              wget https://downloads.apache.org/maven/maven-3/3.8.5/binaries/apache-maven-3.8.5-bin.zip -O maven.zip
+              unzip -q maven.zip -d $(Pipeline.Workspace)
+            displayName: 'Download and Extract Maven'
+
+          # Run Maven commands using direct path
+          - script: $(Pipeline.Workspace)/apache-maven-3.8.5/bin/mvn -version
+            displayName: 'Check Maven Version'
+
+          - script: $(Pipeline.Workspace)/apache-maven-3.8.5/bin/mvn clean install
+            displayName: 'Run Maven Build'
