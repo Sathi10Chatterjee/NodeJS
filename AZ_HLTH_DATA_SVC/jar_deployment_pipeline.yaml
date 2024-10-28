@@ -1,0 +1,64 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main # or the branch you want to deploy from
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Java version to install
+  JAVA_HOME: '/usr/lib/jvm/adoptopenjdk-11-hotspot-amd64'
+  # Your App Service name and resource group
+  AZURE_WEBAPP_NAME: 'mySpringBootApp'
+  AZURE_RESOURCE_GROUP: 'myResourceGroup'
+  AZURE_APP_SERVICE_PLAN: 'myAppServicePlan'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        steps:
+          - task: UseJava@1
+            inputs:
+              versionSpec: '11'
+              jdkArchitecture: 'x64'
+
+          - script: |
+              mvn clean package
+            displayName: 'Build Project with Maven'
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(System.DefaultWorkingDirectory)/target'
+              artifact: 'drop'
+            displayName: 'Publish JAR Artifact'
+
+  - stage: Deploy
+    jobs:
+      - deployment: DeployToAzure
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: drop
+
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: '<Your Azure Subscription>'
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az webapp create --resource-group $(AZURE_RESOURCE_GROUP) --plan $(AZURE_APP_SERVICE_PLAN) --name $(AZURE_WEBAPP_NAME) --runtime "JAVA|11"
+                      az webapp config appsettings set --resource-group $(AZURE_RESOURCE_GROUP) --name $(AZURE_WEBAPP_NAME) --settings JAVA_OPTS="-Dserver.port=80" WEBSITE_RUN_FROM_PACKAGE=1
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '<Your Azure Subscription>'
+                    appName: $(AZURE_WEBAPP_NAME)
+                    package: $(System.DefaultWorkingDirectory)/drop/*.jar
+                  displayName: 'Deploy JAR to Azure App Service'

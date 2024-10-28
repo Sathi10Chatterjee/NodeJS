@@ -1,0 +1,27 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main  # Adjust to your desired branch
+
+pool:
+  name: 'Self-Hosted'  # Use the name of your self-hosted pool
+
+stages:
+  - stage: InstallMaven
+    jobs:
+      - job: MavenInstallation
+        steps:
+          # Install Maven on the self-hosted agent
+          - script: |
+              MAVEN_VERSION=3.8.5  # Specify the Maven version you need
+              wget https://downloads.apache.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.zip
+              unzip apache-maven-$MAVEN_VERSION-bin.zip -d /usr/share
+              sudo ln -s /usr/share/apache-maven-$MAVEN_VERSION/bin/mvn /usr/local/bin/mvn
+            displayName: 'Install Maven 3.8.5'
+
+          # Verify Maven installation
+          - script: |
+              mvn -version
+            displayName: 'Check Maven Version'
