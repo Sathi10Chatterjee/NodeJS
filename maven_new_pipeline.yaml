@@ -1,0 +1,39 @@
+# azure-pipelines.yml
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: 'Self-Hosted'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: MavenInstallation
+        steps:
+          # Download and extract Maven
+          - script: |
+              MAVEN_VERSION=3.8.5
+              wget https://downloads.apache.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.zip -O maven.zip
+              unzip -q maven.zip -d $(Pipeline.Workspace)
+            # Set MAVEN_HOME to the extracted Maven directory
+              export MAVEN_HOME=$(Pipeline.Workspace)/apache-maven-$MAVEN_VERSION
+              export PATH=$MAVEN_HOME/bin:$PATH
+            # Add .m2 directory to PATH
+              export PATH=$PATH:~/.m2/repository
+            displayName: 'Download, Extract Maven, and Set Up Environment Variables'
+
+          # Verify Maven and check `.m2` path addition
+          - script: |
+              echo "Maven Home: $MAVEN_HOME"
+              echo "Maven Version:"
+              mvn -version
+              echo "Current PATH: $PATH"
+            displayName: 'Verify Maven and Environment Setup'
+
+          # Run Maven commands, using `.m2` cache
+          - script: |
+              mvn clean install
+            displayName: 'Run Maven Build with .m2 Cache'
